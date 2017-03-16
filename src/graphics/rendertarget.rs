@@ -30,6 +30,8 @@
 
 use std::any::Any;
 
+use graphics::renderer::Renderer;
+
 pub trait RenderTarget {
     /// To facilitate downcasting back to a concrete type
     fn as_any(&self) -> &Any;
@@ -41,5 +43,8 @@ pub trait RenderTarget {
     fn bind_texture(&self, num: i32);
 
     /// Take a snapshot to disk
-    fn snapshot(&self, filename: &str);
+    ///
+    /// renderer: The renderer object
+    /// filename: The filename to save the snapshot to
+    fn snapshot(&self, renderer: &Box<Renderer>, filename: &str);
 }

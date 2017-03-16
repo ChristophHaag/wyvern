@@ -57,7 +57,7 @@ impl TextureVk {
                                              width,
                                              height,
                                              VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT,
-                                             4,
+                                             16, // Four single-precision floats
                                              data);
 
         TextureVk { texture: texture }

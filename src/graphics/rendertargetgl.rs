@@ -116,7 +116,10 @@ impl RenderTarget for RenderTargetGl {
     }
 
     /// Take a snapshot to disk
-    fn snapshot(&self, filename: &str) {
+    ///
+    /// renderer: The renderer object
+    /// filename: The filename to save the snapshot to
+    fn snapshot(&self, _: &Box<Renderer>, filename: &str) {
         let mut data: Vec<u8> = vec![];
         data.resize((self.width * self.height * 3) as usize, 0);
 

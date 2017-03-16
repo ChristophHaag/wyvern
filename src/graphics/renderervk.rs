@@ -1461,6 +1461,9 @@ impl RendererVkImage {
             VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL => {
                 barrier.srcAccessMask = VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT as VkAccessFlags;
             }
+            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL => {
+                barrier.srcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT as VkAccessFlags;
+            }
             VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL => {
                 barrier.srcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT as VkAccessFlags;
             }
@@ -1493,6 +1496,9 @@ impl RendererVkImage {
             }
             VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR => {
                 barrier.dstAccessMask = VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT as VkAccessFlags;
+            }
+            VkImageLayout::VK_IMAGE_LAYOUT_GENERAL => {
+                barrier.dstAccessMask = VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT as VkAccessFlags;
             }
             VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED => {
                 barrier.dstAccessMask = 0;
@@ -3158,6 +3164,10 @@ pub struct RendererVkTexture {
     image: RendererVkImage,
     view: RendererVkImageView,
     sampler: VkSampler,
+    width: u32,
+    height: u32,
+    format: VkFormat,
+    row_pitch: u64,
 }
 
 impl RendererVkTexture {
@@ -3193,6 +3203,22 @@ impl RendererVkTexture {
                                                  VkImageLayout::VK_IMAGE_LAYOUT_PREINITIALIZED,
                                                  VkImageLayout::VK_IMAGE_LAYOUT_PREINITIALIZED);
 
+        // Query the subresource layout information
+        //
+        let subresource = VkImageSubresource {
+            aspectMask: VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT as VkImageAspectFlags,
+            mipLevel: 0,
+            arrayLayer: 0,
+        };
+
+        let mut staging_image_layout = VkSubresourceLayout::default();
+        unsafe {
+            vkGetImageSubresourceLayout(renderer.device.raw,
+                                        staging_image.raw,
+                                        &subresource,
+                                        &mut staging_image_layout);
+        }
+
         if data.len() > 0 {
             // Map the image into host-addressable memory and then reformat the raw image data into it
             //
@@ -3205,20 +3231,6 @@ impl RendererVkTexture {
                                           VK_WHOLE_SIZE,
                                           0, // Flags
                                           &mut raw));
-            }
-
-            let subresource = VkImageSubresource {
-                aspectMask: VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT as VkImageAspectFlags,
-                mipLevel: 0,
-                arrayLayer: 0,
-            };
-
-            let mut staging_image_layout = VkSubresourceLayout::default();
-            unsafe {
-                vkGetImageSubresourceLayout(renderer.device.raw,
-                                            staging_image.raw,
-                                            &subresource,
-                                            &mut staging_image_layout);
             }
 
             // TODO: Optimise this when the image layout contains no padding
@@ -3257,6 +3269,7 @@ impl RendererVkTexture {
                                          height,
                                          format,
                                          VkImageTiling::VK_IMAGE_TILING_OPTIMAL,
+                                         VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT as VkImageUsageFlags |
                                          VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_DST_BIT as VkImageUsageFlags |
                                          VkImageUsageFlagBits::VK_IMAGE_USAGE_SAMPLED_BIT as VkImageUsageFlags |
                                          VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT as VkImageUsageFlags,
@@ -3331,7 +3344,114 @@ impl RendererVkTexture {
             image: image,
             view: view,
             sampler: sampler,
+            width: width,
+            height: height,
+            format: format,
+            row_pitch: staging_image_layout.rowPitch,
         }
+    }
+
+
+    /// Obtain the pixel contents of a Vulkan texture object
+    ///
+    /// TODO: Optimise this, maybe
+    ///
+    ///
+    pub fn read_pixels(&self, renderer: &RendererVk) -> Vec<u8> {
+        let mut data: Vec<u8> = vec![];
+        let num_bytes: usize = (self.height * self.width * 3) as usize;
+        data.resize(num_bytes, 0);
+
+        // Create a new host-accessible staging image to format the image data into
+        //
+        let props = VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT as VkMemoryPropertyFlags |
+                    VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT as VkMemoryPropertyFlags;
+
+        let staging_image = RendererVkImage::new(&renderer.device,
+                                                 &renderer.physical_device,
+                                                 &renderer.aux_command_pool,
+                                                 self.width,
+                                                 self.height,
+                                                 self.format, // VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
+                                                 VkImageTiling::VK_IMAGE_TILING_LINEAR,
+                                                 VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_DST_BIT as VkImageUsageFlags,
+                                                 props,
+                                                 VkImageLayout::VK_IMAGE_LAYOUT_PREINITIALIZED,
+                                                 VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        // Transition the render target to something that we can transfer from
+        //
+        RendererVkImage::transition_layout_immediate(self.image.raw,
+                                           &renderer.device,
+                                           &renderer.aux_command_pool,
+                                           VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT as VkImageAspectFlags,
+                                           VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                           VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT as VkPipelineStageFlags,
+                                           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT as VkPipelineStageFlags);
+
+        // Now copy from the device local memory to the staging image
+        //
+        RendererVkImage::copy(&renderer.device,
+                              &renderer.aux_command_pool,
+                              self.image.raw,
+                              staging_image.raw,
+                              self.width,
+                              self.height);
+
+        // Transition the render target back to something that we can render to
+        //
+        RendererVkImage::transition_layout_immediate(self.image.raw,
+                                           &renderer.device,
+                                           &renderer.aux_command_pool,
+                                           VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT as VkImageAspectFlags,
+                                           VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                           VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT as VkPipelineStageFlags,
+                                           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT as VkPipelineStageFlags);
+
+        // Transition the staging image to something that we can map
+        //
+        RendererVkImage::transition_layout_immediate(staging_image.raw,
+                                           &renderer.device,
+                                           &renderer.aux_command_pool,
+                                           VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT as VkImageAspectFlags,
+                                           VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                           VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
+                                           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT as VkPipelineStageFlags,
+                                           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT as VkPipelineStageFlags);
+
+        // Map the staging image data into memory
+        //
+        let mut raw: *mut c_void = VK_NULL_HANDLE_MUT();
+        unsafe {
+            check_result!("vkMapMemory",
+                          vkMapMemory(renderer.device.raw,
+                                      staging_image.memory,
+                                      0, // Offset
+                                      VK_WHOLE_SIZE,
+                                      0, // Flags
+                                      &mut raw));
+        }
+
+        let raw_f32 = raw as *const f32;
+
+        unsafe {
+            for y in 0..self.height {
+                for x in 0..self.width {
+                    for i in 0..3 {
+                        let f = *raw_f32.offset(((y as u64 * (self.row_pitch >> 2) + 4 * x as u64) + i as u64) as isize);
+                        data[(((self.height - 1 - y) * self.width + x) * 3 + i) as usize] = (f * 255.0) as u8;
+                    }
+                }
+            }
+        }
+
+        unsafe {
+            vkUnmapMemory(renderer.device.raw, staging_image.memory);
+        }
+
+        data
     }
 }
 

@@ -36,6 +36,7 @@ use graphics::rendertarget::RenderTarget;
 use graphics::renderer::Renderer;
 use graphics::renderervk::*;
 use graphics::texturevk::TextureVk;
+use graphics::image::Image;
 
 // This will likely all change as Vulkan renderer work progresses!
 
@@ -142,8 +143,16 @@ impl RenderTarget for RenderTargetVk {
 
     /// Take a snapshot to disk
     ///
+    /// renderer: The renderer object
     /// filename: The filename to save the snapshot to
-    fn snapshot(&self, _: &str) {
-        unimplemented!();
+    fn snapshot(&self, renderer: &Box<Renderer>, filename: &str) {
+        let renderer_vk = match renderer.as_any().downcast_ref::<RendererVk>() {
+            Some(r) => r,
+            None => panic!("Unexpected runtime type"),
+        };
+
+        let data: Vec<u8> = self.texture.texture.read_pixels(renderer_vk);
+        let image = Image::create_from_raw_data(self.width, self.height, &data);
+        image.save_to(filename);
     }
 }
