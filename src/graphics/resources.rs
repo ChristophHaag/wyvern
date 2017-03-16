@@ -103,6 +103,19 @@ impl Clone for UniformBlockSpec {
     }
 }
 
+impl Default for UniformBlockSpec {
+    fn default() -> UniformBlockSpec {
+        UniformBlockSpec {
+            name: "none",
+            size: 0,
+            set: u32::max_value(),
+            binding: u32::max_value(),
+            block_type: UniformType::RangeSize,
+            uniforms: vec![],
+        }
+    }
+}
+
 // A specifier for a uniform outside a block
 pub struct UniformSpec {
     pub name: &'static str,
@@ -122,6 +135,17 @@ impl Clone for UniformSpec {
     }
 }
 
+impl Default for UniformSpec {
+    fn default() -> UniformSpec {
+        UniformSpec {
+            name: "none",
+            set: u32::max_value(),
+            binding: u32::max_value(),
+            uniform_type: UniformType::RangeSize,
+        }
+    }
+}
+
 // A specifier for a uniform within block
 pub struct BlockUniformSpec {
     pub name: &'static str,
@@ -135,6 +159,16 @@ impl Clone for BlockUniformSpec {
             name: self.name,
             offset: self.offset,
             stride: self.stride,
+        }
+    }
+}
+
+impl Default for BlockUniformSpec {
+    fn default() -> BlockUniformSpec {
+        BlockUniformSpec {
+            name: "none",
+            offset: 0,
+            stride: 0,
         }
     }
 }
