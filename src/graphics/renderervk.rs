@@ -290,7 +290,7 @@ impl RendererVk {
 
             image_index: u32::max_value() as usize,
             shader_name: "",
-            vertex_array_type: VertexArrayType::V3N3C3,
+            vertex_array_type: VertexArrayType::F3F3F3,
             current_render_target: None,
             current_depth_target: None,
             current_pass_identifier: u32::max_value(),
@@ -1930,10 +1930,10 @@ impl RendererVkVertexBuffer {
                array_type: VertexArrayType)
                -> RendererVkVertexBuffer {
         let size = match array_type {
-            VertexArrayType::N3 => 3 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
-            VertexArrayType::V3N3C3 => 9 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
-            VertexArrayType::V3N3 => 6 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
-            VertexArrayType::V2T2 => 4 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
+            VertexArrayType::F3 => 3 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
+            VertexArrayType::F3F3F3 => 9 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
+            VertexArrayType::F3F3 => 6 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
+            VertexArrayType::F2F2 => 4 * mem::size_of::<f32>() * 3 * TRIANGLE_ARRAY_SIZE,
         };
 
         let properties = unsafe {
@@ -2680,7 +2680,7 @@ impl RendererVkPipeline {
         let bindings;
         let attributes;
         match array_type {
-            VertexArrayType::N3 => {
+            VertexArrayType::F3 => {
                 bindings = vec![VkVertexInputBindingDescription {
                                     binding: 0,
                                     stride: 3 * mem::size_of::<f32>() as u32,
@@ -2693,7 +2693,7 @@ impl RendererVkPipeline {
                                       offset: 0,
                                   }];
             }
-            VertexArrayType::V3N3C3 => {
+            VertexArrayType::F3F3F3 => {
                 bindings = vec![VkVertexInputBindingDescription {
                                     binding: 0,
                                     stride: 9 * mem::size_of::<f32>() as u32,
@@ -2718,7 +2718,7 @@ impl RendererVkPipeline {
                                       offset: 6 * mem::size_of::<f32>() as u32,
                                   }];
             }
-            VertexArrayType::V3N3 => {
+            VertexArrayType::F3F3 => {
                 bindings = vec![VkVertexInputBindingDescription {
                                     binding: 0,
                                     stride: 6 * mem::size_of::<f32>() as u32,
@@ -2737,7 +2737,7 @@ impl RendererVkPipeline {
                                       offset: 3 * mem::size_of::<f32>() as u32,
                                   }];
             }
-            VertexArrayType::V2T2 => {
+            VertexArrayType::F2F2 => {
                 bindings = vec![VkVertexInputBindingDescription {
                                     binding: 0,
                                     stride: 4 * mem::size_of::<f32>() as u32,

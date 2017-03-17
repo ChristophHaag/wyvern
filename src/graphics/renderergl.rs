@@ -163,7 +163,7 @@ impl RendererGl {
 
             resource_manager: resource_manager.clone(),
 
-            vertex_array_type: VertexArrayType::V3N3C3,
+            vertex_array_type: VertexArrayType::F3F3F3,
         }
     }
 

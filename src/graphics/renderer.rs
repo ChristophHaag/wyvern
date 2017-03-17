@@ -59,16 +59,15 @@ pub enum RendererType {
     RendererVk,
 }
 
-// TODO: The OpenGL renderer should use these
 #[derive(Clone, Copy, PartialEq)]
 pub enum VertexArrayType {
-    N3,
-    V3N3C3,
-    V3N3,
-    V2T2,
+    F3,
+    F3F3F3,
+    F3F3,
+    F2F2,
 }
-pub const VERTEX_ARRAY_TYPE_BEGIN_RANGE: u32 = VertexArrayType::N3 as u32;
-pub const VERTEX_ARRAY_TYPE_END_RANGE: u32 = VertexArrayType::V2T2 as u32;
+pub const VERTEX_ARRAY_TYPE_BEGIN_RANGE: u32 = VertexArrayType::F3 as u32;
+pub const VERTEX_ARRAY_TYPE_END_RANGE: u32 = VertexArrayType::F2F2 as u32;
 
 #[derive(Clone, Copy)]
 pub enum PrimitiveType {
@@ -89,19 +88,19 @@ pub struct ThreadData {
 impl VertexArrayType {
     pub fn components_per_vertex(ty: VertexArrayType) -> usize {
         match ty {
-            VertexArrayType::N3 => 3,
-            VertexArrayType::V3N3C3 => 9,
-            VertexArrayType::V3N3 => 6,
-            VertexArrayType::V2T2 => 4,
+            VertexArrayType::F3 => 3,
+            VertexArrayType::F3F3F3 => 9,
+            VertexArrayType::F3F3 => 6,
+            VertexArrayType::F2F2 => 4,
         }
     }
 
     pub fn from_u32(ty: u32) -> VertexArrayType {
         match ty {
-            0 => VertexArrayType::N3,
-            1 => VertexArrayType::V3N3C3,
-            2 => VertexArrayType::V3N3,
-            3 => VertexArrayType::V2T2,
+            0 => VertexArrayType::F3,
+            1 => VertexArrayType::F3F3F3,
+            2 => VertexArrayType::F3F3,
+            3 => VertexArrayType::F2F2,
             _ => panic!("Unexpected vertex array type"),
         }
     }
@@ -111,7 +110,7 @@ impl ThreadData {
     pub fn empty(thr: i32) -> ThreadData {
         let td = ThreadData {
             thr: thr,
-            vertex_array_type: VertexArrayType::V3N3C3,
+            vertex_array_type: VertexArrayType::F3F3F3,
             index: 0 as usize,
             primitive: PrimitiveType::PrimitiveTriangles,
             finished: false,
@@ -189,7 +188,7 @@ impl ThreadData {
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
     /// ci: Shader colour inputs for normal at ith vertex of the triangle
-    pub fn add_triangle_st_v3n3c3(&mut self,
+    pub fn add_triangle_st_f3f3f3(&mut self,
                                   v1: &Vec3<f32>,
                                   n1: &Vec3<f32>,
                                   c1: &Vec3<f32>,
@@ -243,7 +242,7 @@ impl ThreadData {
     ///
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
-    pub fn add_triangle_st_v3n3(&mut self,
+    pub fn add_triangle_st_f3f3(&mut self,
                                 v1: &Vec3<f32>,
                                 n1: &Vec3<f32>,
                                 v2: &Vec3<f32>,
@@ -285,7 +284,7 @@ impl ThreadData {
     ///
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for texture coordinates at ith vertex of the triangle
-    pub fn add_triangle_st_v2t2(&mut self,
+    pub fn add_triangle_st_f2f2(&mut self,
                                 v1: &Vec2<f32>,
                                 t1: &Vec2<f32>,
                                 v2: &Vec2<f32>,
@@ -359,7 +358,7 @@ impl ThreadData {
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
     /// ci: Shader colour inputs for normal at first vertex of the triangle
-    pub fn add_triangle_v3n3c3<Rend: Renderer + ?Sized>(&mut self,
+    pub fn add_triangle_f3f3f3<Rend: Renderer + ?Sized>(&mut self,
                                                         single_threaded: bool,
                                                         renderer_arc: Arc<Mutex<&mut Rend>>,
                                                         datatx: &mpsc::Sender<ThreadData>,
@@ -378,7 +377,7 @@ impl ThreadData {
                          renderer_arc,
                          datatx,
                          backrx);
-        self.add_triangle_st_v3n3c3(v1, n1, c1, v2, n2, c2, v3, n3, c3);
+        self.add_triangle_st_f3f3f3(v1, n1, c1, v2, n2, c2, v3, n3, c3);
     }
 
     /// Add the specified raw triangle data to the thread data array
@@ -396,7 +395,7 @@ impl ThreadData {
     ///     to communicate back that the GL commands have been executed
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
-    pub fn add_triangle_v3n3<Rend: Renderer + ?Sized>(&mut self,
+    pub fn add_triangle_f3f3<Rend: Renderer + ?Sized>(&mut self,
                                                       single_threaded: bool,
                                                       renderer_arc: Arc<Mutex<&mut Rend>>,
                                                       datatx: &mpsc::Sender<ThreadData>,
@@ -412,7 +411,7 @@ impl ThreadData {
                          renderer_arc,
                          datatx,
                          backrx);
-        self.add_triangle_st_v3n3(v1, n1, v2, n2, v3, n3);
+        self.add_triangle_st_f3f3(v1, n1, v2, n2, v3, n3);
     }
 
     /// This checks whether a flush is required and actions it when necessary
