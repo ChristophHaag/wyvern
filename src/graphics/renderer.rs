@@ -436,7 +436,7 @@ impl ThreadData {
 
     /// This checks whether a flush is required and actions it when necessary
     ///
-    /// Note: Only call this version from a slave thread!
+    /// Note: Only call this version from a worker thread!
     ///
     /// force: true if the flush should be forced, and false if the
     ///     buffer should only be flushed when full

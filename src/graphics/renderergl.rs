@@ -411,7 +411,7 @@ impl RendererGl {
     ///
     /// renderer_arc: Atomic reference counted lockable reference to the
     ///     renderer, only used when single_threaded
-    /// thread_data: The thread data, potentially supplied by the slave thread
+    /// thread_data: The thread data, potentially supplied by the worker thread
     pub fn flush<Rend: Renderer + ?Sized>(renderer_arc: Arc<Mutex<&mut Rend>>,
                                           thread_data: &ThreadData) {
         if thread_data.index == 0 {
