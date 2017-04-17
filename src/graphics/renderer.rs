@@ -75,16 +75,6 @@ pub enum PrimitiveType {
     PrimitivePatches,
 }
 
-pub struct ThreadData {
-    pub thr: i32,
-    pub vertex_array_type: VertexArrayType,
-    pub index: usize,
-    pub primitive: PrimitiveType,
-    pub finished: bool,
-
-    pub data: Vec<f32>,
-}
-
 impl VertexArrayType {
     pub fn components_per_vertex(ty: VertexArrayType) -> usize {
         match ty {
@@ -106,34 +96,18 @@ impl VertexArrayType {
     }
 }
 
-impl ThreadData {
-    pub fn empty(thr: i32) -> ThreadData {
-        let td = ThreadData {
-            thr: thr,
-            vertex_array_type: VertexArrayType::F3F3F3,
-            index: 0 as usize,
-            primitive: PrimitiveType::PrimitiveTriangles,
-            finished: false,
+pub struct ThreadData {
+    pub thr: i32,
+    pub vertex_array_type: VertexArrayType,
+    pub index: usize,
+    pub primitive: PrimitiveType,
+    pub finished: bool,
 
-            data: vec![],
-        };
-
-        td
-    }
-
-    pub fn new(thr: i32) -> ThreadData {
-        let mut td = ThreadData::empty(thr);
-
-        td.data.reserve(TRIANGLE_MAX_TOTAL_COMPONENTS);
-
-        for _ in 0..TRIANGLE_MAX_TOTAL_COMPONENTS {
-            td.data.push(0.0f32);
-        }
-
-        td
-    }
+    pub data: Vec<f32>,
 }
 
+// ThreadData needs to be cloneable to permit sending from a worker GL rendering
+// thread back to the master thread for flushing
 impl Clone for ThreadData {
     fn clone(&self) -> ThreadData {
         let mut td = ThreadData::new(-1);
@@ -151,6 +125,26 @@ impl Clone for ThreadData {
 }
 
 impl ThreadData {
+    pub fn new(thr: i32) -> ThreadData {
+        let mut td = ThreadData {
+            thr: thr,
+            vertex_array_type: VertexArrayType::F3F3F3,
+            index: 0 as usize,
+            primitive: PrimitiveType::PrimitiveTriangles,
+            finished: false,
+
+            data: vec![],
+        };
+
+        td.data.reserve(TRIANGLE_MAX_TOTAL_COMPONENTS);
+
+        for _ in 0..TRIANGLE_MAX_TOTAL_COMPONENTS {
+            td.data.push(0.0f32);
+        }
+
+        td
+    }
+
     /// Add the specified raw triangle data to the thread data array, with no flush-check
     ///
     /// This is for the Normal-only case, with three components
