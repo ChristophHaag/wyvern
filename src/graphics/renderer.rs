@@ -31,6 +31,7 @@
 use std::sync::*;
 use std::boxed::Box;
 use std::any::Any;
+use crossbeam;
 
 use glfw;
 
@@ -534,4 +535,115 @@ pub trait Renderer: Send + Sync {
 
     /// Select no render target
     fn deselect_render_target(&mut self);
+}
+
+/// Types must implement this trait in order to be able to use the MT harness
+pub trait WorkerThread {
+    /// Perform one thread's worth of work for rendering
+    fn render_thread<Rend: Renderer + ?Sized>(&self,
+                                              renderer_arc: Arc<Mutex<&mut Rend>>,
+                                              threaddata_arc: Arc<Mutex<Box<ThreadData>>>,
+                                              thr: usize,
+                                              max_threads: usize,
+                                              datatx: &mpsc::Sender<ThreadData>,
+                                              backrx: &mpsc::Receiver<i32>);
+}
+
+/// Multi-threaded render harness
+///
+/// object: The object performing the rendering
+/// renderer: A reference to the renderer object to use
+#[allow(dead_code)]
+pub fn mt_render_harness<Object: WorkerThread + Send + Sync, Rend: Renderer + Send + Sync + ?Sized>(object: &Object,
+                                                                                                    renderer: &mut Rend) {
+    let renderer_type = renderer.renderer_type();
+
+    let max_threads = renderer.get_maxthreads();
+    let renderer_arc = Arc::new(Mutex::new(renderer));
+
+    if max_threads == 1 {
+        // Single-threaded path
+
+        let (datatx, _) = mpsc::channel::<ThreadData>();
+        let (_, backrx) = mpsc::channel::<i32>();
+
+        let threaddata_arc;
+        {
+            let renderer = renderer_arc.lock().unwrap();
+            threaddata_arc = renderer.get_threaddata(0);
+        }
+
+        object.render_thread(renderer_arc.clone(),
+                             threaddata_arc,
+                             0, // thread
+                             1, // max_threads
+                             &datatx,
+                             &backrx);
+    } else {
+        // Multi-threaded path
+
+        // Code to dump the main thread handle on Windows for debugging:
+        //
+        // extern "C" {
+        //     fn GetCurrentThreadId() -> u32;
+        // }
+        // unsafe {
+        //     println!("{}", GetCurrentThreadId());
+        // }
+
+        // TODO: Is there any way to avoid avoid spawning *new* threads all the time?
+        crossbeam::scope(|scope| {
+            let (datatx, datarx) = mpsc::channel::<ThreadData>();
+            let mut backtxs: Vec<mpsc::Sender<i32>> = vec![];
+
+            for thr in 0..max_threads {
+                let renderer_arc = renderer_arc.clone();
+                let threaddata_arc;
+                {
+                    let renderer = renderer_arc.lock().unwrap();
+                    threaddata_arc = renderer.get_threaddata(thr);
+                }
+                let datatx = datatx.clone();
+                let (backtx, backrx) = mpsc::channel::<i32>();
+                backtxs.push(backtx);
+
+                scope.spawn(move || {
+                    object.render_thread(renderer_arc,
+                                         threaddata_arc,
+                                         thr,
+                                         max_threads,
+                                         &datatx,
+                                         &backrx)
+                });
+            }
+
+            // This marshalls the transfer of render data from the worker threads to the master
+            // thread so that the OpenGL renderer can emit draw calls.  This is followed by the
+            // notification to the worker that it can continue.  For Vulkan this is a NOP, as
+            // the worker threads submit their computed command buffers to the graphics queue
+            // directly.
+            //
+            // Only the OpenGL renderer needs to receive the thread data and renderer
+            // For Vulkan, just wait for all the threads to join
+            //
+            if renderer_type == RendererType::RendererGl {
+                let mut threads_finished = 0;
+                while threads_finished < max_threads {
+                    let thread_data = datarx.recv().unwrap();
+
+                    // Flush the data calculated by the worker thread as draw calls
+                    RendererGl::flush(renderer_arc.clone(), &thread_data);
+
+                    // If this thread indicated that it was complete, update our tally
+                    //
+                    if thread_data.finished {
+                        threads_finished += 1;
+                    }
+
+                    // Inform the worker thread that its data has been flushed
+                    let _ = backtxs[thread_data.thr as usize].send(0);
+                }
+            }
+        });
+    }
 }

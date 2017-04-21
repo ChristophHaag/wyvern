@@ -409,8 +409,7 @@ impl Renderer for RendererGl {
 impl RendererGl {
     /// As the main thread, flush the buffers returned by a thread as GL calls
     ///
-    /// renderer_arc: Atomic reference counted lockable reference to the
-    ///     renderer, only used when single_threaded
+    /// renderer_arc: Atomic reference counted lockable reference to the renderer
     /// thread_data: The thread data, potentially supplied by the worker thread
     pub fn flush<Rend: Renderer + ?Sized>(renderer_arc: Arc<Mutex<&mut Rend>>,
                                           thread_data: &ThreadData) {
