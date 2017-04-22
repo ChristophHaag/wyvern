@@ -411,10 +411,12 @@ impl ThreadData {
 
     /// This checks whether a flush is required and actions it when necessary
     ///
-    /// This is run from the main thread when single-threaded rendering
+    /// This is run from the main thread when single-threaded rendering.  Because the renderer's
+    /// flush method is designed to lock as required, it is necessary to construct a new
+    /// Arc<Mutex<>> here.
     ///
-    /// force: true if the flush should be forced, and false if the
-    ///     buffer should only be flushed when full
+    /// force: true if the flush should be forced, and false if the buffer should only be
+    ///     flushed when full
     pub fn check_flush_st<Rend: Renderer + ?Sized>(&mut self, force: bool, renderer: &mut Rend) {
         if force || self.index == TRIANGLE_ARRAY_SIZE {
             // We can flush directly from the main thread
