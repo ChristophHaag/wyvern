@@ -31,6 +31,7 @@
 use std::sync::*;
 use std::boxed::Box;
 use std::any::Any;
+use std::cell::RefCell;
 use crossbeam;
 
 use glfw;
@@ -98,7 +99,7 @@ impl VertexArrayType {
 }
 
 pub struct ThreadData {
-    pub thr: i32,
+    pub thr: usize,
     pub vertex_array_type: VertexArrayType,
     pub index: usize,
     pub primitive: PrimitiveType,
@@ -111,13 +112,15 @@ pub struct ThreadData {
 // thread back to the master thread for flushing
 impl Clone for ThreadData {
     fn clone(&self) -> ThreadData {
-        let mut td = ThreadData::new(-1);
+        let mut td = ThreadData {
+            thr: self.thr,
+            vertex_array_type: self.vertex_array_type,
+            index: self.index,
+            primitive: self.primitive,
+            finished: self.finished,
 
-        td.thr = self.thr;
-        td.vertex_array_type = self.vertex_array_type;
-        td.index = self.index;
-        td.primitive = self.primitive;
-        td.finished = self.finished;
+            data: vec![],
+        };
 
         td.data = self.data.iter().map(|x| *x).collect();
 
@@ -126,7 +129,7 @@ impl Clone for ThreadData {
 }
 
 impl ThreadData {
-    pub fn new(thr: i32) -> ThreadData {
+    pub fn new(thr: usize) -> ThreadData {
         let mut td = ThreadData {
             thr: thr,
             vertex_array_type: VertexArrayType::F3F3F3,
@@ -308,31 +311,17 @@ impl ThreadData {
     ///
     /// This is for the Normal-only case, with three components
     ///
-    /// single_threaded: True when only using one thread, false when
-    ///     multi-threading
     /// renderer_arc: Atomic reference counted lockable reference to the
     ///     renderer, only used when single_threaded
-    /// thread_data: Container for vertex data etc for this thread
-    /// datatx: A reference to the mpsc sender object for sending the computed
-    ///     vertex data to the main thread to be flushed as GL commands
-    /// backrx: A reference to the mpsc receiver object for the main thread
-    ///     to communicate back that the GL commands have been executed
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
     /// ci: Shader colour inputs for normal at first vertex of the triangle
     pub fn add_triangle_n3<Rend: Renderer + ?Sized>(&mut self,
-                                                    single_threaded: bool,
                                                     renderer_arc: Arc<Mutex<&mut Rend>>,
-                                                    datatx: &mpsc::Sender<ThreadData>,
-                                                    backrx: &mpsc::Receiver<i32>,
                                                     n1: &Vec3<f32>,
                                                     n2: &Vec3<f32>,
                                                     n3: &Vec3<f32>) {
-        self.check_flush(false, // force
-                         single_threaded,
-                         renderer_arc,
-                         datatx,
-                         backrx);
+        self.check_flush(false /* force */, renderer_arc);
         self.add_triangle_st_n3(n1, n2, n3);
     }
 
@@ -341,23 +330,13 @@ impl ThreadData {
     /// This is for the Vertex + Normal + Colour case, with three
     /// components each
     ///
-    /// single_threaded: True when only using one thread, false when
-    ///     multi-threading
     /// renderer_arc: Atomic reference counted lockable reference to the
     ///     renderer, only used when single_threaded
-    /// thread_data: Container for vertex data etc for this thread
-    /// datatx: A reference to the mpsc sender object for sending the computed
-    ///     vertex data to the main thread to be flushed as GL commands
-    /// backrx: A reference to the mpsc receiver object for the main thread
-    ///     to communicate back that the GL commands have been executed
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
     /// ci: Shader colour inputs for normal at first vertex of the triangle
     pub fn add_triangle_f3f3f3<Rend: Renderer + ?Sized>(&mut self,
-                                                        single_threaded: bool,
                                                         renderer_arc: Arc<Mutex<&mut Rend>>,
-                                                        datatx: &mpsc::Sender<ThreadData>,
-                                                        backrx: &mpsc::Receiver<i32>,
                                                         v1: &Vec3<f32>,
                                                         n1: &Vec3<f32>,
                                                         c1: &Vec3<f32>,
@@ -367,11 +346,7 @@ impl ThreadData {
                                                         v3: &Vec3<f32>,
                                                         n3: &Vec3<f32>,
                                                         c3: &Vec3<f32>) {
-        self.check_flush(false, // force
-                         single_threaded,
-                         renderer_arc,
-                         datatx,
-                         backrx);
+        self.check_flush(false /* force */, renderer_arc);
         self.add_triangle_st_f3f3f3(v1, n1, c1, v2, n2, c2, v3, n3, c3);
     }
 
@@ -379,33 +354,19 @@ impl ThreadData {
     ///
     /// This is for the Vertex + Normal case, with three components each
     ///
-    /// single_threaded: True when only using one thread, false when
-    ///     multi-threading
     /// renderer_arc: Atomic reference counted lockable reference to the
     ///     renderer, only used when single_threaded
-    /// thread_data: Container for vertex data etc for this thread
-    /// datatx: A reference to the mpsc sender object for sending the computed
-    ///     vertex data to the main thread to be flushed as GL commands
-    /// backrx: A reference to the mpsc receiver object for the main thread
-    ///     to communicate back that the GL commands have been executed
     /// vi: Vector for ith vertex of the triangle
     /// ni: Vector for normal at ith vertex of the triangle
     pub fn add_triangle_f3f3<Rend: Renderer + ?Sized>(&mut self,
-                                                      single_threaded: bool,
                                                       renderer_arc: Arc<Mutex<&mut Rend>>,
-                                                      datatx: &mpsc::Sender<ThreadData>,
-                                                      backrx: &mpsc::Receiver<i32>,
                                                       v1: &Vec3<f32>,
                                                       n1: &Vec3<f32>,
                                                       v2: &Vec3<f32>,
                                                       n2: &Vec3<f32>,
                                                       v3: &Vec3<f32>,
                                                       n3: &Vec3<f32>) {
-        self.check_flush(false, // force
-                         single_threaded,
-                         renderer_arc,
-                         datatx,
-                         backrx);
+        self.check_flush(false /* force */, renderer_arc);
         self.add_triangle_st_f3f3(v1, n1, v2, n2, v3, n3);
     }
 
@@ -437,51 +398,42 @@ impl ThreadData {
     ///
     /// force: true if the flush should be forced, and false if the
     ///     buffer should only be flushed when full
-    /// single_threaded: True when only using one thread, false when
-    ///     multi-threading
     /// renderer_arc: Atomic reference counted lockable reference to the
     ///     renderer, only used when single_threaded
-    /// tx: A reference to the mpsc sender object for requesting of the main
-    ///     thread that it flushes the data as GL commands
-    /// backrx: A reference to the mpsc receiver object for the main thread
-    ///     indicating flush completion
-    pub fn check_flush<Rend: Renderer + ?Sized>(&mut self,
-                                                force: bool,
-                                                single_threaded: bool,
-                                                renderer_arc: Arc<Mutex<&mut Rend>>,
-                                                tx: &mpsc::Sender<ThreadData>,
-                                                backrx: &mpsc::Receiver<i32>) {
-        if force || self.index == TRIANGLE_ARRAY_SIZE {
-            let renderer_type;
-            {
-                let renderer = renderer_arc.lock().unwrap();
-                renderer_type = renderer.renderer_type();
-            }
-
-            match renderer_type {
-                RendererType::RendererGl => {
-                    if single_threaded {
-                        // We can flush directly from the main thread
-                        RendererGl::flush(renderer_arc.clone(), self);
-                    } else {
-                        // TODO: Is it possible to avoid transferring all of the data every time?
-                        let mut td: ThreadData = self.clone();
-                        td.finished = force;
-
-                        // Send the data to the main thread
-                        tx.send(td).unwrap();
-
-                        // Wait for and discard the message from the main thread indicating
-                        // that the rendering calls are complete
-                        let _ = backrx.recv();
-                    }
+    pub fn check_flush<Rend: Renderer + ?Sized>(&mut self, force: bool, renderer_arc: Arc<Mutex<&mut Rend>>) {
+        TLS.with(|tl| {
+            if force || self.index == TRIANGLE_ARRAY_SIZE {
+                let renderer_type;
+                {
+                    let renderer = renderer_arc.lock().unwrap();
+                    renderer_type = renderer.renderer_type();
                 }
-                RendererType::RendererVk => RendererVk::flush(renderer_arc.clone(), self),
-            }
 
-            // Reset the triangle index
-            self.index = 0;
-        }
+                match renderer_type {
+                    RendererType::RendererGl => {
+                        if tl.borrow().max_threads == 1 {
+                            // We can flush directly from the main thread
+                            RendererGl::flush(renderer_arc.clone(), self);
+                        } else {
+                            // TODO: Is it possible to avoid transferring all of the data every time?
+                            let mut td: ThreadData = self.clone();
+                            td.finished = force;
+
+                            // Send the data to the main thread
+                            tl.borrow().datatx[0].send(td).unwrap();
+
+                            // Wait for and discard the message from the main thread indicating
+                            // that the rendering calls are complete
+                            let _ = tl.borrow().backrx[0].recv();
+                        }
+                    }
+                    RendererType::RendererVk => RendererVk::flush(renderer_arc.clone(), self),
+                }
+
+                // Reset the triangle index
+                self.index = 0;
+            }
+        });
     }
 }
 
@@ -490,12 +442,28 @@ pub trait WorkerThread {
     /// Perform one thread's worth of work for rendering
     fn render_thread<Rend: Renderer + ?Sized>(&self,
                                               renderer_arc: Arc<Mutex<&mut Rend>>,
-                                              threaddata_arc: Arc<Mutex<Box<ThreadData>>>,
-                                              thr: usize,
-                                              max_threads: usize,
-                                              datatx: &mpsc::Sender<ThreadData>,
-                                              backrx: &mpsc::Receiver<i32>);
+                                              threaddata_arc: Arc<Mutex<Box<ThreadData>>>);
 }
+
+pub struct ThreadLocal {
+    pub thr: usize,
+    pub max_threads: usize,
+    pub datatx: Vec<mpsc::Sender<ThreadData>>,
+    pub backrx: Vec<mpsc::Receiver<i32>>,
+}
+
+impl ThreadLocal {
+    pub fn new() -> ThreadLocal {
+        ThreadLocal {
+            thr: 0,
+            max_threads: 0,
+            datatx: vec![],
+            backrx: vec![],
+        }
+    }
+}
+
+thread_local!(pub static TLS: RefCell<ThreadLocal> = RefCell::new(ThreadLocal::new()));
 
 /// Multi-threaded render harness
 ///
@@ -521,12 +489,14 @@ pub fn mt_render_harness<Object: WorkerThread + Send + Sync, Rend: Renderer + Se
             threaddata_arc = renderer.get_threaddata(0);
         }
 
-        object.render_thread(renderer_arc.clone(),
-                             threaddata_arc,
-                             0, // thread
-                             1, // max_threads
-                             &datatx,
-                             &backrx);
+        TLS.with(|tl| {
+            tl.borrow_mut().thr = 0;
+            tl.borrow_mut().max_threads = max_threads;
+            tl.borrow_mut().datatx.push(datatx);
+            tl.borrow_mut().backrx.push(backrx);
+        });
+
+        object.render_thread(renderer_arc.clone(), threaddata_arc);
     } else {
         // Multi-threaded path
 
@@ -556,12 +526,14 @@ pub fn mt_render_harness<Object: WorkerThread + Send + Sync, Rend: Renderer + Se
                 backtxs.push(backtx);
 
                 scope.spawn(move || {
-                    object.render_thread(renderer_arc,
-                                         threaddata_arc,
-                                         thr,
-                                         max_threads,
-                                         &datatx,
-                                         &backrx)
+                    TLS.with(|tl| {
+                        tl.borrow_mut().thr = thr;
+                        tl.borrow_mut().max_threads = max_threads;
+                        tl.borrow_mut().datatx.push(datatx);
+                        tl.borrow_mut().backrx.push(backrx);
+                    });
+
+                    object.render_thread(renderer_arc, threaddata_arc)
                 });
             }
 
