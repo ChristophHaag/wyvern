@@ -485,60 +485,6 @@ impl ThreadData {
     }
 }
 
-pub trait Renderer: Send + Sync {
-    /// To facilitate downcasting back to a concrete type
-    fn as_any(&self) -> &Any;
-    fn as_any_mut(&mut self) -> &mut Any;
-
-    /// Return the renderer type
-    /// TODO: Replace uses with uses of as_any
-    fn renderer_type(&self) -> RendererType;
-
-    /// Obtain an Arc for the ThreadData structure for the specified thread
-    fn get_threaddata(&self, thr: usize) -> Arc<Mutex<Box<ThreadData>>>;
-
-    /// Return the maximum number of threads
-    fn get_maxthreads(&self) -> usize;
-
-    /// Clear the depth buffer before starting rendering
-    fn clear_depth_buffer(&self);
-
-    /// This converts the primitive type that will be rendered to the renderer's intrinsic type
-    fn primitive(&self, primitive_type: PrimitiveType) -> u32;
-
-    /// Uniform buffer configuration
-    fn set_uniform_buffer_int(&self, buffer_name: &str, uniform_name: &str, value: i32);
-    fn set_uniform_buffer_float(&self, buffer_name: &str, uniform_name: &str, value: f32);
-    fn set_uniform_buffer_vec3(&self, buffer_name: &str, uniform_name: &str, value: &Vec3<f32>);
-    fn set_uniform_buffer_matrix(&self, buffer_name: &str, uniform_name: &str, matrix: &Mat4<f32>);
-    fn set_uniform_buffer_float_vector(&self, buffer_name: &str, uniform_name: &str, vector: &Vec<f32>);
-    fn synchronise_uniform_buffer(&self, buffer_name: &str);
-
-    /// Flip the back buffer to the front
-    fn flip(&self, window: &mut glfw::Context);
-
-    /// Begin rendering a new frame
-    fn begin_frame(&mut self);
-
-    /// Terminate rendering a new frame
-    fn end_frame(&mut self);
-
-    /// Initiate a render pass
-    fn begin_pass(&mut self, shader_name: &'static str);
-
-    /// Terminate a render pass
-    fn end_pass(&mut self);
-
-    /// Select the specified render target to render to
-    ///
-    /// num: The texture number to bind the render target texture to
-    /// render_target: The render target to select
-    fn select_render_target(&mut self, num: i32, render_target: &mut RenderTarget);
-
-    /// Select no render target
-    fn deselect_render_target(&mut self);
-}
-
 /// Types must implement this trait in order to be able to use the MT harness
 pub trait WorkerThread {
     /// Perform one thread's worth of work for rendering
@@ -648,4 +594,58 @@ pub fn mt_render_harness<Object: WorkerThread + Send + Sync, Rend: Renderer + Se
             }
         });
     }
+}
+
+pub trait Renderer: Send + Sync {
+    /// To facilitate downcasting back to a concrete type
+    fn as_any(&self) -> &Any;
+    fn as_any_mut(&mut self) -> &mut Any;
+
+    /// Return the renderer type
+    /// TODO: Replace uses with uses of as_any
+    fn renderer_type(&self) -> RendererType;
+
+    /// Obtain an Arc for the ThreadData structure for the specified thread
+    fn get_threaddata(&self, thr: usize) -> Arc<Mutex<Box<ThreadData>>>;
+
+    /// Return the maximum number of threads
+    fn get_maxthreads(&self) -> usize;
+
+    /// Clear the depth buffer before starting rendering
+    fn clear_depth_buffer(&self);
+
+    /// This converts the primitive type that will be rendered to the renderer's intrinsic type
+    fn primitive(&self, primitive_type: PrimitiveType) -> u32;
+
+    /// Uniform buffer configuration
+    fn set_uniform_buffer_int(&self, buffer_name: &str, uniform_name: &str, value: i32);
+    fn set_uniform_buffer_float(&self, buffer_name: &str, uniform_name: &str, value: f32);
+    fn set_uniform_buffer_vec3(&self, buffer_name: &str, uniform_name: &str, value: &Vec3<f32>);
+    fn set_uniform_buffer_matrix(&self, buffer_name: &str, uniform_name: &str, matrix: &Mat4<f32>);
+    fn set_uniform_buffer_float_vector(&self, buffer_name: &str, uniform_name: &str, vector: &Vec<f32>);
+    fn synchronise_uniform_buffer(&self, buffer_name: &str);
+
+    /// Flip the back buffer to the front
+    fn flip(&self, window: &mut glfw::Context);
+
+    /// Begin rendering a new frame
+    fn begin_frame(&mut self);
+
+    /// Terminate rendering a new frame
+    fn end_frame(&mut self);
+
+    /// Initiate a render pass
+    fn begin_pass(&mut self, shader_name: &'static str);
+
+    /// Terminate a render pass
+    fn end_pass(&mut self);
+
+    /// Select the specified render target to render to
+    ///
+    /// num: The texture number to bind the render target texture to
+    /// render_target: The render target to select
+    fn select_render_target(&mut self, num: i32, render_target: &mut RenderTarget);
+
+    /// Select no render target
+    fn deselect_render_target(&mut self);
 }
