@@ -323,6 +323,10 @@ impl ResourceManager {
             // - Binding points for all uniform blocks
             //
             for uniform_block_name in shader_spec.uniform_block_names.iter() {
+                if !self.uniform_block_specs.contains_key(uniform_block_name) {
+                    println!("Failed to find uniform block {} for shader {}", uniform_block_name, shader_spec.name);
+                    panic!("Check the resource definitions");
+                }
                 let ref mut uniform_block_spec = self.uniform_block_specs.get_mut(uniform_block_name).unwrap();
 
                 for ref mut uniform in uniform_block_spec.uniforms.iter_mut() {
