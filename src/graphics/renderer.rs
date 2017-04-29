@@ -39,6 +39,7 @@ use glfw;
 use graphics::renderergl::*;
 use graphics::renderervk::*;
 use graphics::rendertarget::*;
+use graphics::resources::*;
 use algebra::matrix::Mat4;
 use algebra::vector::*;
 
@@ -620,4 +621,65 @@ pub trait Renderer: Send + Sync {
 
     /// Select no render target
     fn deselect_render_target(&mut self);
+}
+
+/// Create new threaddata objects for a renderer
+///
+/// max_threads: The maximum number of rendering threads
+fn create_threaddata_objects(max_threads: usize) -> Vec<Arc<Mutex<Box<ThreadData>>>> {
+    let mut threaddata_arcs = Vec::with_capacity(max_threads);
+    for thr in 0..max_threads {
+        threaddata_arcs.push(Arc::new(Mutex::new(Box::new(ThreadData::new(thr)))));
+    }
+
+    threaddata_arcs
+}
+
+/// Initial creation of a renderer, but further setup will be carried out later
+///
+/// glfw: The main GLFW object
+/// window: The GLFW application window
+/// renderer_type: The type of renderer to create
+/// resource_manager: The resource manager containing information about shaders, uniforms, etc
+/// application_name: The name of the application (currently only used for Vulkan)
+/// application_version: A string identifying the application version (currently only used for Vulkan)
+/// engine_version: A string identifying the engine version (currently only used for Vulkan)
+/// max_threads: The maximum number of rendering threads
+/// debug_level: The debug level for the renderer
+/// vk_debug_mask: The Vulkan debug mask, for Vulkan API tracing
+pub fn create_renderer(glfw: &mut glfw::Glfw,
+                       window: &mut glfw::Window,
+                       renderer_type: RendererType,
+                       resource_manager: &Arc<Mutex<Box<ResourceManager>>>,
+                       application_name: &str,
+                       application_version: &str,
+                       engine_version: &str,
+                       max_threads: usize,
+                       debug_level: u32,
+                       vk_debug_mask: u32)
+                       -> Box<Renderer> {
+    let threaddata_vector = create_threaddata_objects(max_threads);
+    let renderer: Box<Renderer>;
+    if renderer_type == RendererType::RendererVk {
+        renderer = Box::new(RendererVk::new(application_name,
+                                            application_version,
+                                            engine_version,
+                                            max_threads,
+                                            debug_level,
+                                            vk_debug_mask,
+                                            glfw,
+                                            window,
+                                            resource_manager,
+                                            threaddata_vector.clone()));
+    } else if renderer_type == RendererType::RendererGl {
+        renderer = Box::new(RendererGl::new(debug_level,
+                                            max_threads,
+                                            window,
+                                            resource_manager,
+                                            threaddata_vector.clone()));
+    } else {
+        panic!("Unknown renderer type requested")
+    }
+
+    renderer
 }

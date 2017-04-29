@@ -389,7 +389,9 @@ impl RendererVk {
 
         // Create a render pipeline for each shader
         //
-        for (shader_name, shader_spec) in res_manager.shader_specs.iter() {
+        for (shader_name, _) in shaders {
+            let ref shader_spec = res_manager.shader_specs[shader_name];
+
             self.render_pipelines
                 .insert(shader_name,
                         RendererVkPipeline::new(&self.device,
