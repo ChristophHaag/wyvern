@@ -633,7 +633,7 @@ impl RendererVkDebugCallback {
         let mut callback_handle: VkDebugReportCallbackEXT = VK_NULL_HANDLE_MUT();
         if opt_void_ptr.is_some() {
             let void_fn_ptr = opt_void_ptr.expect("to_be_found");
-            type SrcType = extern "C" fn();
+            type SrcType = unsafe extern "C" fn();
             #[allow(non_snake_case)]
             type DstType = extern "C" fn(instance: VkInstance,
                                          pCreateInfo: *const VkDebugReportCallbackCreateInfoEXT,
@@ -704,7 +704,7 @@ impl Drop for RendererVkDebugCallback {
             let opt_void_ptr = vkGetInstanceProcAddr(self.instance, entrypoint_name.as_ptr());
             if opt_void_ptr.is_some() {
                 let void_fn_ptr = opt_void_ptr.expect("to_be_found");
-                type SrcType = extern "C" fn();
+                type SrcType = unsafe extern "C" fn();
                 #[allow(non_snake_case)]
                 type DstType = extern "C" fn(instance: VkInstance,
                                              pCallback: VkDebugReportCallbackEXT,
@@ -1441,8 +1441,8 @@ impl RendererVkImage {
             sType: VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             oldLayout: old_layout,
             newLayout: new_layout,
-            srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED,
-            dstQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED,
+            srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED as u32,
+            dstQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED as u32,
             image: image,
             subresourceRange: VkImageSubresourceRange::default(), // Filled in below
             srcAccessMask: 0, // Filled in below
@@ -2935,8 +2935,8 @@ impl RendererVkCommandBuffer {
             dstAccessMask: dst_access_mask,
             oldLayout: old_layout,
             newLayout: new_layout,
-            srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED,
-            dstQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED,
+            srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED as u32,
+            dstQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED as u32,
             image: image,
             subresourceRange: VkImageSubresourceRange {
                 aspectMask: aspect_mask,
@@ -2998,11 +2998,11 @@ impl RendererVkCommandBuffer {
             sType: VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
             srcAccessMask: src_access_mask,
             dstAccessMask: dst_access_mask,
-            srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED,
-            dstQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED,
+            srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED as u32,
+            dstQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED as u32,
             buffer: buffer,
             offset: 0,
-            size: VK_WHOLE_SIZE,
+            size: VK_WHOLE_SIZE as u64,
             pNext: ptr::null(),
         };
 
@@ -3230,7 +3230,7 @@ impl RendererVkTexture {
                               vkMapMemory(renderer.device.raw,
                                           staging_image.memory,
                                           0, // Offset
-                                          VK_WHOLE_SIZE,
+                                          VK_WHOLE_SIZE as u64,
                                           0, // Flags
                                           &mut raw));
             }
@@ -3431,7 +3431,7 @@ impl RendererVkTexture {
                           vkMapMemory(renderer.device.raw,
                                       staging_image.memory,
                                       0, // Offset
-                                      VK_WHOLE_SIZE,
+                                      VK_WHOLE_SIZE as u64,
                                       0, // Flags
                                       &mut raw));
         }
@@ -3703,7 +3703,7 @@ impl Renderer for RendererVk {
                           vkMapMemory(self.device.raw,
                                       buffer.buffer.memory,
                                       0, // Offset
-                                      VK_WHOLE_SIZE,
+                                      VK_WHOLE_SIZE as u64,
                                       0, // Flags
                                       &mut data));
             ptr::copy_nonoverlapping(buffer.bytes.as_ptr(), data as *mut u8, buffer.buffer.size);

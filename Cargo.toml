@@ -30,7 +30,7 @@
 
 [package]
 name = "wyvern"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
 	"aeolian145@gmail.com"
 	]
@@ -54,7 +54,7 @@ num = "*"
 libc = "*"
 regex = "*"
 gl = "*"
-vk = { version = ">=0.2.0", git = "https://github.com/StrayLightning/vk-rs.git" }
+vk = { version = ">=1.0.0", git = "https://github.com/StrayLightning/vk-rs.git" }
 #vk = { path = "../vk-rs" }
 
 [dependencies.glfw]
