@@ -44,7 +44,8 @@ name = "wyvern"
 path = "src/lib.rs"
 
 [dependencies]
-image = "*"
+# image 0.13.0 doesn't compile
+image = "<=0.12.3"
 crossbeam = "*"
 semver = "*"
 rand = "*"
