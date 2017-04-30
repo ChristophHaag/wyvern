@@ -49,11 +49,9 @@ impl Image {
         self.height
     }
 
-    /// Return a clone of the pixel data of the image
-    ///
-    /// TODO: Consider using an Rc or an Arc to avoid copying the data
-    pub fn get_data(&self) -> Vec<u8> {
-        self.data.clone()
+    /// Return the pixel data of the image
+    pub fn get_data(&self) -> &Vec<u8> {
+        &self.data
     }
 
     /// Create an Image object from the PNG file specified

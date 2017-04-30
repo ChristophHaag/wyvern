@@ -930,7 +930,6 @@ impl RendererVkSurface {
         }
 
         // Arbitrarily pick the first available format
-        // TODO: Make a better choice in this case
         let mut format = formats[0];
 
         if format_count == 1 && matches!(formats[0].format, VkFormat::VK_FORMAT_UNDEFINED) {
@@ -1076,7 +1075,7 @@ impl RendererVkDevice {
             sType: VkStructureType::VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             queueCreateInfoCount: 1,
             pQueueCreateInfos: &queue_create_info,
-            // TODO: Enabling all features seems like cheating: We have the missed
+            // Enabling all features seems like cheating: We have the missed
             // opportunity to request all the features the application needs and
             // have the API reject device creation if they are not available.
             pEnabledFeatures: &physical_device.features,
@@ -2118,7 +2117,7 @@ impl RendererVkDescriptorSetLayouts {
 
                     set_layout_bindings.push(VkDescriptorSetLayoutBinding {
                         descriptorType: RendererVkDescriptorSetLayouts::internal_descriptor_type(block.block_type),
-                        // TODO: stageFlags set to 'all' is overkill, but does it harm performance?
+                        // stageFlags set to 'all' is overkill, but does it harm performance?
                         stageFlags: VkShaderStageFlagBits::VK_SHADER_STAGE_ALL as VkShaderStageFlags,
                         binding: block.binding,
                         descriptorCount: 1,
@@ -2136,7 +2135,7 @@ impl RendererVkDescriptorSetLayouts {
 
                     set_layout_bindings.push(VkDescriptorSetLayoutBinding {
                         descriptorType: RendererVkDescriptorSetLayouts::internal_descriptor_type(uniform.uniform_type),
-                        // TODO: stageFlags set to 'all' is overkill, but does it harm performance?
+                        // stageFlags set to 'all' is overkill, but does it harm performance?
                         stageFlags: VkShaderStageFlagBits::VK_SHADER_STAGE_ALL as VkShaderStageFlags,
                         binding: uniform.binding,
                         descriptorCount: 1,

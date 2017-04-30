@@ -578,7 +578,6 @@ pub trait Renderer: Send + Sync {
     fn as_any_mut(&mut self) -> &mut Any;
 
     /// Return the renderer type
-    /// TODO: Replace uses with uses of as_any
     fn renderer_type(&self) -> RendererType;
 
     /// Obtain an Arc for the ThreadData structure for the specified thread
