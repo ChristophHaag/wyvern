@@ -34,13 +34,14 @@ use std::any::Any;
 use gl;
 use gl::types::*;
 
-use graphics::rendertarget::RenderTarget;
-use graphics::renderer::Renderer;
-use graphics::texturegl::TextureGl;
-use graphics::image::Image;
+use graphics::rendertarget::*;
+use graphics::renderer::*;
+use graphics::texture::*;
+use graphics::texturegl::*;
+use graphics::image::*;
 
 pub struct RenderTargetGl {
-    texture: TextureGl,
+    texture: Box<Texture>,
     width: u32,
     height: u32,
     fbo: GLuint,
@@ -53,8 +54,8 @@ impl RenderTargetGl {
     }
 
     /// Return the texture object for this render target
-    pub fn get_texture(&self) -> TextureGl {
-        self.texture.clone()
+    pub fn get_texture(&self) -> &Box<Texture> {
+        &self.texture
     }
 
     /// Configure texture as a render-to-texture target
@@ -91,7 +92,7 @@ impl RenderTargetGl {
         }
 
         RenderTargetGl {
-            texture: texture_gl,
+            texture: Box::new(texture_gl),
             width: width,
             height: height,
             fbo: fbo,
@@ -113,6 +114,11 @@ impl RenderTarget for RenderTargetGl {
     /// num: The texture number to bind the texture to
     fn bind_texture(&self, num: i32) {
         self.texture.bind(num);
+    }
+
+    /// Return the texture object for this render target
+    fn get_texture(&self) -> &Box<Texture> {
+        &self.texture
     }
 
     /// Take a snapshot to disk

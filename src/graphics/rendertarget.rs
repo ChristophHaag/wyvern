@@ -30,7 +30,8 @@
 
 use std::any::Any;
 
-use graphics::renderer::Renderer;
+use graphics::renderer::*;
+use graphics::texture::*;
 
 pub trait RenderTarget {
     /// To facilitate downcasting back to a concrete type
@@ -41,6 +42,9 @@ pub trait RenderTarget {
     ///
     /// num: The texture number to bind the texture to
     fn bind_texture(&self, num: i32);
+
+    /// Return the texture object for this render target
+    fn get_texture(&self) -> &Box<Texture>;
 
     /// Take a snapshot to disk
     ///

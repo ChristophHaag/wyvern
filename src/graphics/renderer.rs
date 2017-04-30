@@ -28,10 +28,11 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 // DAMAGE.
 
-use std::sync::*;
+use std::collections::HashMap;
 use std::boxed::Box;
 use std::any::Any;
 use std::cell::RefCell;
+use std::sync::*;
 use crossbeam;
 
 use glfw;
@@ -40,6 +41,8 @@ use graphics::renderergl::*;
 use graphics::renderervk::*;
 use graphics::rendertarget::*;
 use graphics::resources::*;
+use graphics::shader::*;
+use graphics::texture::*;
 use algebra::matrix::Mat4;
 use algebra::vector::*;
 
@@ -583,6 +586,14 @@ pub trait Renderer: Send + Sync {
 
     /// Return the maximum number of threads
     fn get_maxthreads(&self) -> usize;
+
+    /// Finish initialisation of resources
+    ///
+    /// shaders: A map of the shaders to set up, keyed by name
+    /// textures: A map of the textures to set up, keyed by name
+    fn finish_resource_initialisation(&mut self,
+                                      shaders: &HashMap<&'static str, &Box<Shader>>,
+                                      textures: &HashMap<&'static str, &Box<Texture>>);
 
     /// Clear the depth buffer before starting rendering
     fn clear_depth_buffer(&self);

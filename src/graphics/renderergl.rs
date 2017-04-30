@@ -43,9 +43,11 @@ use glfw;
 use gl;
 use gl::types::*;
 
-use graphics::resources::ResourceManager;
+use graphics::resources::*;
 use graphics::renderer::*;
-use graphics::shaderglsl::ShaderGlsl;
+use graphics::shader::*;
+use graphics::shaderglsl::*;
+use graphics::texture::*;
 use graphics::rendertarget::*;
 use graphics::rendertargetgl::*;
 use algebra::matrix::Mat4;
@@ -120,10 +122,9 @@ impl RendererGl {
                     .to_string_lossy()
                     .into_owned();
                 println!("GL_VERSION: {}", glver);
-                let slver =
-                    CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8)
-                        .to_string_lossy()
-                        .into_owned();
+                let slver = CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8)
+                    .to_string_lossy()
+                    .into_owned();
                 println!("GL_SHADING_LANGUAGE_VERSION: {}", slver);
 
                 let mut val: GLint = -1;
@@ -184,8 +185,7 @@ impl RendererGl {
             let (shader_name, shader) = sh;
             let ref shader_spec = res_manager.shader_specs[shader_name];
             for uniform_block_name in shader_spec.uniform_block_names.iter() {
-                let buffer_descriptor =
-                    shader.get_uniform_buffer_descriptor_from_uniform_block(uniform_block_name);
+                let buffer_descriptor = shader.get_uniform_buffer_descriptor_from_uniform_block(uniform_block_name);
                 self.uniform_buffer_descs.insert(uniform_block_name, buffer_descriptor);
             }
         }
@@ -214,6 +214,30 @@ impl Renderer for RendererGl {
     /// Return the maximum number of threads allowed
     fn get_maxthreads(&self) -> usize {
         return self.max_threads;
+    }
+
+    /// Finish initialisation of resources
+    ///
+    /// shaders: A map of the shaders to set up, keyed by name
+    /// textures: A map of the textures to set up, keyed by name
+    fn finish_resource_initialisation(&mut self,
+                                      shaders: &HashMap<&'static str, &Box<Shader>>,
+                                      _: &HashMap<&'static str, &Box<Texture>>) {
+        let mut renderer_gl: &mut RendererGl = match self.as_any_mut().downcast_mut::<RendererGl>() {
+            Some(r) => r,
+            None => panic!("Unexpected runtime type"),
+        };
+
+        let mut shaders_gl = HashMap::new();
+        for shader in shaders.iter() {
+            let (nm, sh) = shader;
+            match sh.as_any().downcast_ref::<ShaderGlsl>() {
+                Some(r) => shaders_gl.insert(*nm, r),
+                None => panic!("Unexpected runtime type"),
+            };
+        }
+
+        renderer_gl.setup(&shaders_gl);
     }
 
     /// Clear the depth buffer before starting rendering
@@ -283,10 +307,7 @@ impl Renderer for RendererGl {
     /// buffer_name: The name of the uniform buffer to contain the new value
     /// uniform_name: The name of the uniform whose value should be set
     /// matrix: The value to set for the uniform
-    fn set_uniform_buffer_matrix(&self,
-                                 buffer_name: &str,
-                                 uniform_name: &str,
-                                 matrix: &Mat4<f32>) {
+    fn set_uniform_buffer_matrix(&self, buffer_name: &str, uniform_name: &str, matrix: &Mat4<f32>) {
         let ref buffer = self.uniform_buffer_descs[buffer_name];
         let offset = buffer.offsets[uniform_name];
         debug_assert!((offset + 16 * mem::size_of::<f32>()) <= buffer.size);
@@ -303,10 +324,7 @@ impl Renderer for RendererGl {
     /// buffer_name: The name of the uniform buffer to contain the new value
     /// uniform_name: The name of the uniform whose value should be set
     /// vector: The vector to set for the uniform
-    fn set_uniform_buffer_float_vector(&self,
-                                       buffer_name: &str,
-                                       uniform_name: &str,
-                                       vector: &Vec<f32>) {
+    fn set_uniform_buffer_float_vector(&self, buffer_name: &str, uniform_name: &str, vector: &Vec<f32>) {
         let ref buffer = self.uniform_buffer_descs[buffer_name];
         let offset = buffer.offsets[uniform_name];
         let stride = buffer.strides[uniform_name];
@@ -323,8 +341,7 @@ impl Renderer for RendererGl {
             debug_assert!((offset + vector.len() * stride) <= buffer.size);
             unsafe {
                 for i in 0..vector.len() {
-                    let dst: *const u8 =
-                        buffer.bytes.as_ptr().offset((i * stride + offset) as isize);
+                    let dst: *const u8 = buffer.bytes.as_ptr().offset((i * stride + offset) as isize);
                     let dst_f32 = dst as *mut f32;
                     let src: *const f32 = mem::transmute(vector.as_ptr().offset(i as isize));
                     *dst_f32 = *src;
@@ -381,21 +398,18 @@ impl Renderer for RendererGl {
     /// num: The texture number to bind the render target texture to
     /// render_target: The render target to select
     fn select_render_target(&mut self, num: i32, render_target: &mut RenderTarget) {
-        let target_gl = match render_target.as_any_mut().downcast_mut::<RenderTargetGl>() {
-            Some(r) => r,
-            None => panic!("Unexpected runtime type"),
-        };
+        {
+            let target_gl = match render_target.as_any_mut().downcast_mut::<RenderTargetGl>() {
+                Some(r) => r,
+                None => panic!("Unexpected runtime type"),
+            };
 
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, target_gl.get_fbo());
-
-            gl::ActiveTexture(match num {
-                1 => gl::TEXTURE1,
-                _ => gl::TEXTURE0,
-            });
-
-            gl::BindTexture(gl::TEXTURE_2D, target_gl.get_texture().texture_name);
+            unsafe {
+                gl::BindFramebuffer(gl::FRAMEBUFFER, target_gl.get_fbo());
+            }
         }
+
+        render_target.bind_texture(num);
     }
 
     /// Select no render target
@@ -411,8 +425,7 @@ impl RendererGl {
     ///
     /// renderer_arc: Atomic reference counted lockable reference to the renderer
     /// thread_data: The thread data, potentially supplied by the worker thread
-    pub fn flush<Rend: Renderer + ?Sized>(renderer_arc: Arc<Mutex<&mut Rend>>,
-                                          thread_data: &ThreadData) {
+    pub fn flush<Rend: Renderer + ?Sized>(renderer_arc: Arc<Mutex<&mut Rend>>, thread_data: &ThreadData) {
         if thread_data.index == 0 {
             return;
         }
@@ -421,19 +434,17 @@ impl RendererGl {
         //
         let mut renderer = renderer_arc.lock().unwrap();
 
-        let renderer_gl: &mut RendererGl = match renderer.as_any_mut()
+        let renderer_gl = match renderer.as_any_mut()
             .downcast_mut::<RendererGl>() {
             Some(r) => r,
             None => panic!("Unexpected runtime type"),
         };
 
-        let components_per_triangle =
-            3 * VertexArrayType::components_per_vertex(renderer_gl.vertex_array_type);
+        let components_per_triangle = 3 * VertexArrayType::components_per_vertex(renderer_gl.vertex_array_type);
 
         unsafe {
             gl::BufferData(gl::ARRAY_BUFFER,
-                           (thread_data.index * components_per_triangle *
-                            mem::size_of::<GLfloat>()) as GLsizeiptr,
+                           (thread_data.index * components_per_triangle * mem::size_of::<GLfloat>()) as GLsizeiptr,
                            mem::transmute(thread_data.data.as_ptr()),
                            gl::DYNAMIC_DRAW);
 

@@ -46,9 +46,10 @@ use glfw;
 use glfw::*;
 
 use graphics::renderer::*;
-use graphics::shader::ShaderStage;
-use graphics::shaderspirv::ShaderSpirv;
-use graphics::texturevk::TextureVk;
+use graphics::shader::*;
+use graphics::shaderspirv::*;
+use graphics::texture::*;
+use graphics::texturevk::*;
 use graphics::rendertarget::*;
 use graphics::rendertargetvk::*;
 use graphics::resources::*;
@@ -3490,6 +3491,39 @@ impl Renderer for RendererVk {
     /// Return the maximum number of threads allowed
     fn get_maxthreads(&self) -> usize {
         return self.max_threads;
+    }
+
+    /// Finish initialisation of resources
+    ///
+    /// shaders: A map of the shaders to set up, keyed by name
+    /// textures: A map of the textures to set up, keyed by name
+    fn finish_resource_initialisation(&mut self,
+                                      shaders: &HashMap<&'static str, &Box<Shader>>,
+                                      textures: &HashMap<&'static str, &Box<Texture>>) {
+        let mut renderer_vk: &mut RendererVk = match self.as_any_mut().downcast_mut::<RendererVk>() {
+            Some(r) => r,
+            None => panic!("Unexpected runtime type"),
+        };
+
+        let mut shaders_vk = HashMap::new();
+        for shader in shaders.iter() {
+            let (nm, sh) = shader;
+            match sh.as_any().downcast_ref::<ShaderSpirv>() {
+                Some(s) => shaders_vk.insert(*nm, s),
+                None => panic!("Unexpected runtime type"),
+            };
+        }
+
+        let mut textures_vk = HashMap::new();
+        for texture in textures.iter() {
+            let (nm, tx) = texture;
+            match tx.as_any().downcast_ref::<TextureVk>() {
+                Some(t) => textures_vk.insert(*nm, t),
+                None => panic!("Unexpected runtime type"),
+            };
+        }
+
+        renderer_vk.setup(&shaders_vk, &textures_vk);
     }
 
     /// Clear the depth buffer before starting rendering

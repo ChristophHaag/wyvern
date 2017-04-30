@@ -32,18 +32,19 @@ use std::any::Any;
 
 use vk::vulkan::*;
 
-use graphics::rendertarget::RenderTarget;
-use graphics::renderer::Renderer;
+use graphics::rendertarget::*;
+use graphics::renderer::*;
 use graphics::renderervk::*;
-use graphics::texturevk::TextureVk;
-use graphics::image::Image;
+use graphics::texture::*;
+use graphics::texturevk::*;
+use graphics::image::*;
 
 // This will likely all change as Vulkan renderer work progresses!
 
 pub struct RenderTargetVk {
     width: u32,
     height: u32,
-    pub texture: TextureVk,
+    pub texture: Box<Texture>,
     depth_image_view: RendererVkImageView,
     depth_image: RendererVkImage,
     framebuffer: Option<RendererVkFramebuffer>,
@@ -100,7 +101,7 @@ impl RenderTargetVk {
         RenderTargetVk {
             width: width,
             height: height,
-            texture: texture_vk,
+            texture: Box::new(texture_vk),
             depth_image: depth_image,
             depth_image_view: depth_image_view,
             framebuffer: None,
@@ -116,8 +117,13 @@ impl RenderTargetVk {
             None => panic!("Unexpected runtime type"),
         };
 
+        let texture_vk = match self.texture.as_any().downcast_ref::<TextureVk>() {
+            Some(t) => t,
+            None => panic!("Unexpected runtime type"),
+        };
+
         self.framebuffer = Some(RendererVkFramebuffer::new(&renderer_vk.device,
-                                                           self.texture.texture.get_view_raw(),
+                                                           texture_vk.texture.get_view_raw(),
                                                            Some(self.depth_image_view.get_view_raw()),
                                                            &renderer_vk.render_passes[pass_identifier as usize],
                                                            self.width,
@@ -141,6 +147,11 @@ impl RenderTarget for RenderTargetVk {
         self.texture.bind(num);
     }
 
+    /// Return the texture object for this render target
+    fn get_texture(&self) -> &Box<Texture> {
+        &self.texture
+    }
+
     /// Take a snapshot to disk
     ///
     /// renderer: The renderer object
@@ -151,7 +162,12 @@ impl RenderTarget for RenderTargetVk {
             None => panic!("Unexpected runtime type"),
         };
 
-        let data: Vec<u8> = self.texture.texture.read_pixels(renderer_vk);
+        let texture_vk = match self.texture.as_any().downcast_ref::<TextureVk>() {
+            Some(t) => t,
+            None => panic!("Unexpected runtime type"),
+        };
+
+        let data: Vec<u8> = texture_vk.texture.read_pixels(renderer_vk);
         let image = Image::create_from_raw_data(self.width, self.height, &data);
         image.save_to(filename);
     }
