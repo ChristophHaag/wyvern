@@ -58,6 +58,5 @@ vk = { version = ">=1.0.0", git = "https://github.com/StrayLightning/vk-rs.git" 
 #vk = { path = "../vk-rs" }
 
 [dependencies.glfw]
-#path = "../../../../packages/git/glfw-rs"
 version = ">=0.11.0"
 features = ["vulkan"]
