@@ -425,14 +425,9 @@ impl Mat4<f32> {
         basis.m[1][2] = forward.y;
         basis.m[2][2] = forward.z;
 
-        // TODO: Optimise this
         let translation = Mat4::translate(-position.x, -position.y, -position.z);
-        let result = basis * translation;
-        // println!("{} basis\n", basis);
-        // println!("{} translation\n", translation);
-        // println!("{} result\n", result);
 
-        result
+        basis * translation
     }
 }
 
