@@ -515,7 +515,10 @@ pub fn mt_render_harness<Object: WorkerThread + Send + Sync, Rend: Renderer + Se
         //     println!("{}", GetCurrentThreadId());
         // }
 
-        // TODO: Is there any way to avoid avoid spawning *new* threads all the time?
+        // Is there any way to avoid avoid spawning new threads all the time?
+        // For the main thread, this ought to be possible, but it's quite tricky
+        // to have worker threads that can be reused.  And at the moment the
+        // code clarity is preferable to the pedal-to-the-metal performance.
         crossbeam::scope(|scope| {
             let (datatx, datarx) = mpsc::channel::<ThreadData>();
             let mut backtxs: Vec<mpsc::Sender<i32>> = vec![];
