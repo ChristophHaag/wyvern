@@ -49,14 +49,14 @@ pub fn read_text_file(embedded: Option<&EmbeddedResources>, filename: &str) -> S
     let mut use_embedded = false;
 
     match embedded {
-        Some(ref embedded) => use_embedded = embedded.use_me,
+        Some(ref embedded) => use_embedded = embedded.use_me(),
         None => (),
     };
 
     if use_embedded {
         // Use embedded resources
         match embedded {
-            Some(ref embedded) => contents = embedded.resources[filename].to_string(),
+            Some(ref embedded) => contents = embedded.resources()[filename].to_string(),
             None => (),
         };
     } else {

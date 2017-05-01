@@ -452,7 +452,7 @@ impl Shader for ShaderGlsl {
                     shader_spec: &ShaderSpec,
                     old_driver: bool) {
         match autos {
-            Some(ref autos) => self.use_autos = autos.use_me,
+            Some(ref autos) => self.use_autos = autos.use_me(),
             None => (),
         };
 

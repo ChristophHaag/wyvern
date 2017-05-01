@@ -30,18 +30,39 @@
 
 use std::collections::HashMap;
 
-pub struct EmbeddedResources {
+pub trait EmbeddedResources {
+    /// Indicates whether there are embedded resources or not
+    fn use_me(&self) -> bool;
+
+    /// Accessor for the embedded resources
+    fn resources(&self) -> &HashMap<&'static str, &'static str>;
+}
+
+// The following is an "empty" implementation of the trait for applications
+// to use if they don't want to use the resource-embedding feature.
+//
+pub struct NoEmbedded {
     pub use_me: bool,
     pub resources: HashMap<&'static str, &'static str>,
 }
 
-impl EmbeddedResources {
-    pub fn new() -> EmbeddedResources {
-        let res = EmbeddedResources {
+impl NoEmbedded {
+    pub fn new() -> NoEmbedded {
+        let res = NoEmbedded {
             use_me: false,
             resources: HashMap::new(),
         };
 
         res
+    }
+}
+
+impl EmbeddedResources for NoEmbedded {
+    fn use_me(&self) -> bool {
+        self.use_me
+    }
+
+    fn resources(&self) -> &HashMap<&'static str, &'static str> {
+        &self.resources
     }
 }
