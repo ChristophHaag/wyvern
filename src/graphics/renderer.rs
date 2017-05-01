@@ -419,7 +419,9 @@ impl ThreadData {
                             // We can flush directly from the main thread
                             RendererGl::flush(renderer_arc.clone(), self);
                         } else {
-                            // TODO: Is it possible to avoid transferring all of the data every time?
+                            // Is it possible to avoid transferring all of the data every time?
+                            // Actually, is this in fact a copy or is it passed from one thread
+                            // to another by reference?
                             let mut td: ThreadData = self.clone();
                             td.finished = force;
 
