@@ -1012,13 +1012,7 @@ impl RendererVkSurface {
             if debug_level > 0 {
                 println!("Available presentation mode: {} {}", *mode as i32, *mode);
             }
-            // TODO: Review these presentation mode priorities
-            if matches!(*mode, VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR) {
-                presentation_mode = *mode;
-            }
-            if !matches!(presentation_mode,
-                         VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR) &&
-               matches!(*mode, VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR) {
+            if matches!(*mode, VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR) {
                 presentation_mode = *mode;
             }
         }
