@@ -212,7 +212,7 @@ impl ShaderGlsl {
                 let ref block = resource_manager.lock().unwrap().uniform_block_specs[block_name];
 
                 let block_index = gl::GetUniformBlockIndex(program as GLuint,
-                                                           CString::new(block.name.clone()).unwrap().as_ptr());
+                                                           CString::new(block_name.clone()).unwrap().as_ptr());
                 if block_index == gl::INVALID_INDEX {
                     println!("build_shader could not find uniform block {} for {}",
                              block_name,
@@ -282,7 +282,7 @@ impl ShaderGlsl {
                     for (offset, uniform) in offsets.iter().zip(block.uniforms.iter()) {
                         if *offset == -1 {
                             println!("Failed to find uniform block {} name {}",
-                                     block.name,
+                                     block_name,
                                      uniform.name);
                         } else {
                             // println!("build_shader {} uniform block {} size {} uniform {}, offset {}",

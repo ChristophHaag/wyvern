@@ -82,7 +82,6 @@ pub enum UniformType {
 
 // A specifier for a uniform block
 pub struct UniformBlockSpec {
-    pub name: &'static str,
     pub size: usize,
     pub set: u32,
     pub binding: u32,
@@ -93,7 +92,6 @@ pub struct UniformBlockSpec {
 impl Clone for UniformBlockSpec {
     fn clone(&self) -> UniformBlockSpec {
         UniformBlockSpec {
-            name: self.name,
             size: self.size,
             set: self.set,
             binding: self.binding,
@@ -106,7 +104,6 @@ impl Clone for UniformBlockSpec {
 impl Default for UniformBlockSpec {
     fn default() -> UniformBlockSpec {
         UniformBlockSpec {
-            name: "none",
             size: 0,
             set: u32::max_value(),
             binding: u32::max_value(),
