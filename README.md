@@ -58,8 +58,8 @@ violation by introducing another!
 * The OpenGL fixed function pipeline uses right-handed coordinates
   everywhere except for clip space.
   * The frustum projection matrix is constructed to introduce the flip.
-  * I believe the reasons for this to be historical.
-  * And it certainly introduces a great deal of confusion!
+  * Modern OpenGL doesn't mandate any handedness, but these conventions
+    seem to be commonly followed in OpenGL code.
 
 # Acknowledgements
 
