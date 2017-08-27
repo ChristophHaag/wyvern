@@ -368,6 +368,9 @@ impl ShaderGlsl {
     ///
     /// Returns: The uniform descriptor for the named block
     pub fn get_uniform_buffer_descriptor_from_uniform_block(&self, block_name: &str) -> UniformBufferDesc {
+        if !self.uniform_block_descs.contains_key(block_name) {
+            panic!("Could not find uniform buffer for block named {}", block_name);
+        }
         let ref block = self.uniform_block_descs[block_name];
 
         let mut descriptor = UniformBufferDesc {
