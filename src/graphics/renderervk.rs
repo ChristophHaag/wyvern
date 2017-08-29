@@ -1129,7 +1129,7 @@ impl RendererVkSwapchain {
     ///
     fn new(device: &RendererVkDevice, surface: &RendererVkSurface, image_count: u32) -> RendererVkSwapchain {
         debug_assert!(image_count >= surface.capabilities.minImageCount);
-        debug_assert!(image_count <= surface.capabilities.maxImageCount);
+        debug_assert!(image_count <= surface.capabilities.maxImageCount || surface.capabilities.maxImageCount == 0);
 
         let layers = 1; // Non-stereoscopic
         debug_assert!(layers <= surface.capabilities.maxImageArrayLayers);
