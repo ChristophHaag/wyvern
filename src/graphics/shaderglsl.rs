@@ -622,7 +622,7 @@ fn compile_glsl(name: &str, source_names: &Vec<String>, glsl: &str, shader_stage
         preprocessed = re.replace_all(glsl, "layout(").to_string();
     } else {
         preprocessed = glsl.to_string();
-        preamble = preamble + &"#extension GL_KHR_vulkan_glsl : enable"
+        preamble = preamble + &"#extension GL_KHR_vulkan_glsl : enable\n"
     }
 
     unsafe {
